@@ -171,6 +171,45 @@ passed to the LLM — useful for diagnosing why the AI fallback stalled on a giv
   fresh clone), `SIGNUP_PROFILE_DIR` (pick a specific sub-profile inside that dir, e.g.
   `"Profile 2"`).
 
+- Optional notify: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` — an end-of-run digest is
+  posted to Telegram automatically when both are set.
+
+## Farmer kit (CLI, batch, health-check, export)
+
+The entry point is a full CLI now — no flags to remember, and everything is additive
+to the original `python run.py <Site>` form:
+
+```bash
+python run.py                      # all sites
+python run.py Groq Cerebras        # several providers
+python run.py --headless Groq      # no visible window
+python run.py --list               # automatable providers, then exit
+python run.py --check              # health-check out/keys.txt against live APIs
+python run.py --export sh          # emit `omniroute providers add` commands
+python run.py --accounts accounts.txt   # batch multi-account run
+```
+
+- **`--check`** probes every key in `out/keys.txt` against the live provider API
+  (1-token chat completion for the LLM providers, `GET /models` for the rest) and
+  writes `out/keys_live.txt`, `out/keys_dead.txt`, `out/keys_unknown.txt` — so a
+  harvested key that silently expired is caught before you wire it into a project.
+- **`--export`** turns the harvest into ready-to-run commands for an OmniRoute-style
+  gateway (`omniroute providers add <provider> --credential-stdin`), or a plain
+  `list`/`env` dump for anything else.
+- **`--accounts FILE`** runs the whole farm for many accounts in one pass. Each line is
+  `email:password:Display Name:profile_dir` (password/name/profile optional, `#` comments
+  and blank lines ignored). Per-account Chrome sub-profiles keep the sign-ins isolated and
+  `keys.txt` tracks which account each key belongs to.
+- **Deduplicated key store** (`farmer/keyfile.py`): a `(provider, key)` pair is never
+  written twice, no matter how many accounts re-farm the same site.
+- **Telegram digest** (`farmer/notify.py`): when `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`
+  are set, the run posts a compact summary — ok/wall/error counts + the fresh keys — so
+  you can monitor a headless box from your phone.
+- `python run.py --export env` prints `PROVIDER=key` lines (duplicates suffixed `_2`, `_3`).
+
+Tests: `python -m pytest tests/test_keyfile.py tests/test_kit.py` (new, offline, no
+browser needed) and `python -X utf8 tests/selftest.py` for the fixture-based suite.
+
 ## Known limitations
 
 - **Payment/card walls** are detected and skipped, not bypassed (by design).
