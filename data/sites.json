@@ -91,10 +91,11 @@
       "difficolta": "multi_account_no_chooser: il sito NON forza il chooser Google (no prompt=select_account) -> Google auto-logga l'account PRIMARIO del profilo (account_a), ignora SIGNUP_ACCOUNT. NON fixabile lato codice. Soluzione = profilo Chrome separato per account (1 solo Google per profilo)."
     },
     {
-      "name": "Groq",
-      "signup_url": "https://console.groq.com/login",
-      "via_google": true,
-      "key_url": "https://console.groq.com/keys",
+     "name": "Groq",
+     "signup_url": "https://console.groq.com/login",
+     "via_google": false,
+     "via_email": true,
+     "key_url": "https://console.groq.com/keys",
       "key_re": "gsk_[A-Za-z0-9]{52}",
       "wall": "none",
       "automatable": true,

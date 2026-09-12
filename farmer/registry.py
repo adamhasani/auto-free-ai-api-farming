@@ -72,7 +72,7 @@ def providers_compat() -> dict:
 
 def sites_compat() -> list[dict]:
     """Ricostruisce la vecchia lista SITES (per sites.py)."""
-    keep = ("name", "via_google", "logout_after")
+    keep = ("name", "via_google", "via_email", "logout_after")
     out = []
     for s in load():
         d = {k: s[k] for k in keep if k in s}

@@ -176,7 +176,11 @@ async def run_site(ctx, site: dict, log) -> dict:
                  "salto la registrazione", "skip")
     else:
         # PASSO 2 — SIGNUP: trova dove registrarsi
-        r = await links.find_and_click(page, "signup", log)
+        r = None
+        if site.get("via_email"):
+            log.step("SIGNUP", "lane email magic-link", "gestito al PASSO 3", "skip")
+        else:
+            r = await links.find_and_click(page, "signup", log)
         if r is None:
             r2 = await links.find_and_click(page, "signin", log)  # alcuni siti: accedi con Google = registrati
             if r2 is None:
@@ -185,9 +189,15 @@ async def run_site(ctx, site: dict, log) -> dict:
         await page.wait_for_timeout(1200)
         await cookies.dismiss(page, log)  # il banner puo ricomparire sulla pagina di registrazione
 
-        # PASSO 3 — ACCESSO (Google oppure modulo)
+        # PASSO 3 — ACCESSO (email magic-link / Google / modulo)
         done_signup = False
-        if site.get("via_google", True):
+        if site.get("via_email"):
+            from . import groq_email
+            log.step("ACCESSO", "magic-link email", name, "ok")
+            done_signup = await groq_email.signup_with_email(ctx, page, log)
+            if done_signup:
+                await page.wait_for_timeout(1500)
+        if not done_signup and site.get("via_google", True):
             # se c'e il campo telefono nel modulo Google e' raro; il telefono lo controlliamo sul modulo
             g = await google_oauth.signup_with_google(ctx, page, forms.EMAIL, log)
             if g:
@@ -300,9 +310,17 @@ async def run_site(ctx, site: dict, log) -> dict:
         await page.wait_for_timeout(1200)
 
     # MURO LOGIN: il key_url puo rimandare a una pagina di accesso (sessione scaduta o
-    # provider che slogga, es. SambaNova Auth0 con logout_after). Ri-autentica via Google e
+    # provider che slogga, es. SambaNova Auth0 con logout_after). Ri-autentica e
     # ritorna sul key_url. (stessa logica dell'oracolo api_signup)
-    if site.get("via_google", True) or site.get("via_github"):
+    if site.get("via_email"):
+        body = await _body(page)
+        on_login = (("log in" in body or "sign in" in body or "continue with email" in body)
+                    and not await _is_key_area(page))
+        if on_login:
+            from . import groq_email
+            log.step("CHIAVI", "muro login", "magic-link email", "ai")
+            await groq_email.signup_with_email(ctx, page, log)
+    elif site.get("via_google", True) or site.get("via_github"):
         body = await _body(page)
         on_login = (("continue with google" in body or "continue with github" in body
                      or "log in" in body or "sign in" in body or "accedi" in body)
